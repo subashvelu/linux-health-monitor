@@ -1,12 +1,34 @@
-name: System Health Check
+name: System Health Check CI/CD
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main ]
   schedule:
     - cron: '0 6 * * *'
 
 jobs:
-  health-check:
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Syntax check the script
+        run: bash -n health_v2.sh
+
+      - name: Confirm script exists and is readable
+        run: |
+          if [ -f health_v2.sh ]; then
+            echo "health_v2.sh found."
+          else
+            echo "ERROR: health_v2.sh missing!"
+            exit 1
+          fi
+
+  build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -18,5 +40,18 @@ jobs:
       - name: Run health check
         run: ./health_v2.sh
 
-      - name: Show log output
-        run: cat health.log
+      - name: Upload health.log as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-report
+          path: health.log
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy step (simulated)
+        run: |
+          echo "All tests passed."
+          echo "Deploying Linux Health Monitor..."
+          echo "Deployment successful!"
